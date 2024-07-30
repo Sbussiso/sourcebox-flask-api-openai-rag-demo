@@ -168,13 +168,14 @@ class GPTPackResponse(Resource):
         data = request.json
         user_message = data.get('user_message')
         conversation_history = data.get('history', [])
+        pack_id = data.get('pack_id')
 
         try:
             client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
             # Prepare the user message with the conversation history
             history_content = " ".join([f"{entry['sender']}: {entry['message']}" for entry in conversation_history])
-            full_user_message = f"Prompt: {user_message} History: {history_content}"
+            full_user_message = f"Prompt: {user_message} History: {history_content} Pack ID: {pack_id}"
 
             messages = [
                 {"role": "system", "content": "You are to answer all Queries using the provided context"},
