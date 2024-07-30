@@ -1,9 +1,8 @@
 import os
 import shutil
 import openai
-import openpyxl
 import logging
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, session
 from flask_restful import Api, Resource
 from dotenv import load_dotenv
 from uuid import uuid4
@@ -212,10 +211,6 @@ class GPTPackResponse(Resource):
             return {'message': 'An error occurred while generating GPT pack response'}, 500
 
 
-
-
-
-
 api.add_resource(UploadFile, '/upload')
 api.add_resource(RetrieveFiles, '/retrieve-files')
 api.add_resource(GPTResponse, '/gpt-response')
@@ -226,3 +221,4 @@ api.add_resource(GPTPackResponse, '/gpt-pack-response')
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
