@@ -167,22 +167,24 @@ class GPTPackResponse(Resource):
         logger.info("Received GPT pack response request")
         data = request.json
         user_message = data.get('user_message')
+        conversation_history = data.get('history', [])
 
         try:
             client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
+            # Prepare the messages with the conversation history
+            messages = [{"role": "system", "content": "You are to answer all Queries using the provided context"}]
+
+            for entry in conversation_history:
+                messages.append({"role": entry["sender"], "content": entry["message"]})
+
+            messages.append({"role": "user", "content": user_message})
+
+            logger.info(f"Sending messages to OpenAI: {messages}")
+
             chat_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are to answer all Queries using the provided context"
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Query: {user_message}\n",
-                    }
-                ]
+                messages=messages
             )
 
             assistant_message = chat_completion.choices[0].message.content
@@ -191,6 +193,8 @@ class GPTPackResponse(Resource):
         except Exception as e:
             logger.exception("An error occurred while generating GPT pack response")
             return {'message': 'An error occurred while generating GPT pack response'}, 500
+
+
 
 api.add_resource(UploadFile, '/upload')
 api.add_resource(RetrieveFiles, '/retrieve-files')
