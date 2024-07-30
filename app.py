@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, session
 import os, shutil
 import openai
-from transformers import pipeline
 import openpyxl
 from dotenv import load_dotenv
 from uuid import uuid4
@@ -106,27 +105,6 @@ def gpt_response():
     return jsonify({"message": assistant_message})
 
 
-
-#sentiment analysis pipeline
-def sentiment_analysis(text: str) -> str:
-    model_name = "distilbert-base-uncased-finetuned-sst-2-english"
-    classifier = pipeline("sentiment-analysis", model=model_name)
-    result = classifier(text)
-    return result[0]
-
-#!sentiment analysis route
-@app.route('/sentiment-pipe', methods=['POST'])
-def sentiment_pipe():
-    data = request.json
-    user_message = data.get('user_message')
-
-    result = sentiment_analysis(user_message)
-    return jsonify({"message": result})
-
-
-
-
-
 # Delete session and all associated files
 @app.route('/delete-session', methods=['DELETE'])
 def delete_session():
@@ -140,6 +118,41 @@ def delete_session():
         return jsonify({'message': 'Session and all associated files deleted successfully'}), 200
     else:
         return jsonify({'message': 'No files found for this session'}), 404
+
+
+
+@app.route('/gpt-pack-response', methods=['POST'])
+def gpt_pack_response():
+    #TODO get request in format {'user_prompt': 'query', 'pack_id': 'pack_id', 'history': 'history'}
+    #TODO: Embed pack data from packman by pack_id
+    #TODO: Get the most relevant file from the pack data based on user_prompt
+    #TODO: run through gpt-3.5-turbo
+    #TODO: return response
+    data = request.json
+    user_message = data.get('user_message')
+
+    client = openai.OpenAI(
+        api_key=os.getenv('OPENAI_API_KEY')
+    )
+
+    chat_completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are to answer all Queries using the provided context"
+            },
+            {
+                "role": "user",
+                "content": f"Query: {user_message}\n",
+            }
+        ]
+    )
+
+    assistant_message = chat_completion.choices[0].message.content
+    print(f"Assistant message: {assistant_message}")  # Debug statement
+    return jsonify({"message": assistant_message})
+
 
 
 if __name__ == '__main__':

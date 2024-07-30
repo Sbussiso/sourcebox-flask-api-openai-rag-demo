@@ -4,8 +4,8 @@ import requests
 session = requests.Session()
 
 # Define the base URL
-base_url = 'http://127.0.0.1:5000'
-#base_url = 'https://sourcebox-rag-api-9f82a9c7f128.herokuapp.com'
+#base_url = 'http://127.0.0.1:5000'
+base_url = 'https://sourcebox-rag-api-9f82a9c7f128.herokuapp.com'
 
 # 1. Upload the file
 upload_url = f'{base_url}/upload'
@@ -28,13 +28,7 @@ response = session.post(gpt_response_url, json=data)
 print("GPT response:", response.json())
 
 
-# 4. Test the sentiment analysis pipeline
-sentiment_pipe_url = f'{base_url}/sentiment-pipe'
-data = {'user_message': 'I love this product!'}
-response = session.post(sentiment_pipe_url, json=data)
-print("Sentiment analysis response:", response.json())
-
-# 5. Delete the session and all associated files
+# 4. Delete the session and all associated files
 delete_session_url = f'{base_url}/delete-session'
 response = session.delete(delete_session_url)
 print("Delete session response:", response.json())
