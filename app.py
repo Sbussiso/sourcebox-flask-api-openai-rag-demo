@@ -175,14 +175,10 @@ class GPTPackResponse(Resource):
             # Fetch pack data from Auth API using pack_id
             auth_api_url = os.getenv('AUTH_API_URL')
             token = os.getenv('API_ACCESS_TOKEN')
-
-            # Log the token for debugging purposes
-            logger.info(f"Using API_ACCESS_TOKEN: {token}")
-
             headers = {'Authorization': f'Bearer {token}'}
 
             # Fetch pack data from Auth API
-            pack_response = requests.get(f"{auth_api_url}/packman/pack/{pack_id}", headers=headers)
+            pack_response = requests.get(f"{auth_api_url}/packman/pack-details/{pack_id}", headers=headers)
             if pack_response.status_code == 200:
                 pack_data = pack_response.json()
                 logger.info(f"Pack data retrieved: {pack_data}")
