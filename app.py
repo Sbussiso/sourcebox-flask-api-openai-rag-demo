@@ -178,7 +178,7 @@ class GPTPackResponse(Resource):
             headers = {'Authorization': f'Bearer {token}'}
 
             # Fetch pack data from Auth API
-            pack_response = requests.get(f"{auth_api_url}/packman/pack-details/{pack_id}", headers=headers)
+            pack_response = requests.get(f"{auth_api_url}/packman/pack/details/{pack_id}", headers=headers)
             if pack_response.status_code == 200:
                 pack_data = pack_response.json()
                 logger.info(f"Pack data retrieved: {pack_data}")
@@ -211,6 +211,8 @@ class GPTPackResponse(Resource):
         except Exception as e:
             logger.exception("An error occurred while generating GPT pack response")
             return {'message': 'An error occurred while generating GPT pack response'}, 500
+
+
 
 api.add_resource(UploadFile, '/upload')
 api.add_resource(RetrieveFiles, '/retrieve-files')
