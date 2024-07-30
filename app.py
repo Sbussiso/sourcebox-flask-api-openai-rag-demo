@@ -8,6 +8,7 @@ from flask_restful import Api, Resource
 from dotenv import load_dotenv
 from uuid import uuid4
 import process_files as pf
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -171,11 +172,25 @@ class GPTPackResponse(Resource):
         pack_id = data.get('pack_id')
 
         try:
+            # Fetch pack data from Auth API using pack_id
+            auth_api_url = os.getenv('AUTH_API_URL')
+            headers = {'Authorization': f'Bearer {os.getenv("API_ACCESS_TOKEN")}'}
+
+            # Fetch pack data from Auth API
+            pack_response = requests.get(f"{auth_api_url}/packman/pack/{pack_id}", headers=headers)
+            if pack_response.status_code == 200:
+                pack_data = pack_response.json()
+                logger.info(f"Pack data retrieved: {pack_data}")
+            else:
+                logger.error(f"Failed to retrieve pack data: {pack_response.text}")
+                return {"message": "Failed to retrieve pack data"}, 500
+
             client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-            # Prepare the user message with the conversation history
+            # Prepare the user message with the conversation history and pack data
             history_content = " ".join([f"{entry['sender']}: {entry['message']}" for entry in conversation_history])
-            full_user_message = f"Prompt: {user_message} History: {history_content} Pack ID: {pack_id}"
+            pack_content = " ".join([f"{entry['data_type']}: {entry['content']}" for entry in pack_data.get('contents', [])])
+            full_user_message = f"Prompt: {user_message} History: {history_content} Pack ID: {pack_id} Pack Content: {pack_content}"
 
             messages = [
                 {"role": "system", "content": "You are to answer all Queries using the provided context"},
@@ -195,6 +210,7 @@ class GPTPackResponse(Resource):
         except Exception as e:
             logger.exception("An error occurred while generating GPT pack response")
             return {'message': 'An error occurred while generating GPT pack response'}, 500
+
 
 
 
