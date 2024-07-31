@@ -172,10 +172,17 @@ class GPTPackResponse(Resource):
         pack_id = data.get('pack_id')
 
         try:
+            # Fetch access token from the request headers
+            token = request.headers.get('Authorization', None)
+            if token:
+                logger.info(f"Received access token: {token}")
+            else:
+                logger.error("Authorization token not provided")
+                return {"message": "Authorization token not provided"}, 400
+
             # Fetch pack data from Auth API using pack_id
             auth_api_url = os.getenv('AUTH_API_URL')
-            token = os.getenv('API_ACCESS_TOKEN')
-            headers = {'Authorization': f'Bearer {token}'}
+            headers = {'Authorization': token}
 
             # Construct the request URL
             request_url = f"{auth_api_url}/packman/pack/details/{pack_id}"
@@ -217,6 +224,7 @@ class GPTPackResponse(Resource):
         except Exception as e:
             logger.exception("An error occurred while generating GPT pack response")
             return {'message': 'An error occurred while generating GPT pack response'}, 500
+
 
 
 
