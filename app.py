@@ -209,7 +209,7 @@ class GPTPackResponse(Resource):
             full_user_message = f"Prompt: {user_message} History: {history_content} Pack Content: {pack_content}"
 
             messages = [
-                {"role": "system", "content": "You are to answer all Queries using the provided context"},
+                {"role": "system", "content": "You are to answer all Queries using the provided context. if there is no context answer as you would normally"},
                 {"role": "user", "content": full_user_message}
             ]
 
