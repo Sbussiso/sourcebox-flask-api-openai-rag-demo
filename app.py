@@ -87,6 +87,82 @@ class RetrieveFiles(Resource):
             logger.exception("An error occurred while retrieving files")
             return {'message': 'An error occurred while retrieving files'}, 500
 
+class GPTResponse(Resource):
+    def post(self):
+        logger.info("Received GPT response request")
+        data = request.json
+        user_message = data.get('user_message')
+
+        if 'session_id' not in session:
+            logger.error("No session started")
+            return {'message': 'No session started'}, 400
+        
+        session_folder = os.path.join(app.config['UPLOAD_FOLDER'], session['session_id'])
+        embeddings_file = os.path.join(session_folder, 'embeddings.npy')
+        if not os.path.exists(embeddings_file):
+            logger.error("No embeddings found for this session")
+            return {'message': 'No embeddings found for this session'}, 404
+        
+        try:
+            embeddings = pf.load_embeddings(embeddings_file)
+            logger.info(f"Embeddings loaded from file: {embeddings_file}")
+            relevant_files = pf.query_embeddings(embeddings, user_message)
+            logger.info(f"Relevant files identified: {relevant_files}")
+
+            # Get the content of the most relevant file
+            if relevant_files:
+                top_file = relevant_files[0]
+                top_content = pf.read_file(top_file)
+                logger.info(f"Top file content: {top_content}")
+            else:
+                top_content = "No relevant documents found."
+                logger.info("No relevant documents found")
+
+            client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+            chat_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"You are to answer all Queries using the provided context"
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Query: {user_message}\n Context: {top_content}",
+                    }
+                ]
+            )
+
+            assistant_message = chat_completion.choices[0].message.content
+            logger.info(f"Assistant message: {assistant_message}")
+            return {"message": assistant_message}
+        except Exception as e:
+            logger.exception("An error occurred while generating GPT response")
+            return {'message': 'An error occurred while generating GPT response'}, 500
+
+class DeleteSession(Resource):
+    def delete(self):
+        logger.info("Received request to delete session")
+        if 'session_id' not in session:
+            logger.error("No session started")
+            return {'message': 'No session started'}, 400
+        
+        session_folder = os.path.join(app.config['UPLOAD_FOLDER'], session['session_id'])
+        if os.path.exists(session_folder):
+            try:
+                shutil.rmtree(session_folder)
+                logger.info(f"Session folder deleted: {session_folder}")
+                session.pop('session_id', None)
+                logger.info("Session data cleared")
+                return {'message': 'Session and all associated files deleted successfully'}, 200
+            except Exception as e:
+                logger.exception("An error occurred while deleting session files")
+                return {'message': 'An error occurred while deleting session files'}, 500
+        else:
+            logger.error("No files found for this session")
+            return {'message': 'No files found for this session'}, 404
+
 class GPTPackResponse(Resource):
     def post(self):
         logger.info("Received GPT pack response request")
@@ -151,90 +227,6 @@ class GPTPackResponse(Resource):
             logger.exception("An error occurred while generating GPT pack response")
             return {'message': 'An error occurred while generating GPT pack response'}, 500
 
-
-class DeleteSession(Resource):
-    def delete(self):
-        logger.info("Received request to delete session")
-        if 'session_id' not in session:
-            logger.error("No session started")
-            return {'message': 'No session started'}, 400
-        
-        session_folder = os.path.join(app.config['UPLOAD_FOLDER'], session['session_id'])
-        if os.path.exists(session_folder):
-            try:
-                shutil.rmtree(session_folder)
-                logger.info(f"Session folder deleted: {session_folder}")
-                session.pop('session_id', None)
-                logger.info("Session data cleared")
-                return {'message': 'Session and all associated files deleted successfully'}, 200
-            except Exception as e:
-                logger.exception("An error occurred while deleting session files")
-                return {'message': 'An error occurred while deleting session files'}, 500
-        else:
-            logger.error("No files found for this session")
-            return {'message': 'No files found for this session'}, 404
-
-class GPTPackResponse(Resource):
-    def post(self):
-        logger.info("Received GPT pack response request")
-        data = request.json
-        user_message = data.get('user_message')
-        conversation_history = data.get('history', [])
-        pack_id = data.get('pack_id')
-
-        try:
-            # Fetch access token from the request headers
-            token = request.headers.get('Authorization', None)
-            if token:
-                logger.info(f"Received access token: {token}")
-            else:
-                logger.error("Authorization token not provided")
-                return {"message": "Authorization token not provided"}, 400
-
-            # Fetch pack data from Auth API using pack_id
-            auth_api_url = os.getenv('AUTH_API_URL')
-            headers = {'Authorization': token}
-
-            # Construct the request URL
-            request_url = f"{auth_api_url}/packman/pack/details/{pack_id}"
-            
-            # Log the exact request details
-            logger.info(f"Sending request to Auth API: {request_url} with headers: {headers}")
-
-            # Fetch pack data from Auth API
-            pack_response = requests.get(request_url, headers=headers)
-            if pack_response.status_code == 200:
-                pack_data = pack_response.json()
-                logger.info(f"Pack data retrieved: {pack_data}")
-            else:
-                logger.error(f"Failed to retrieve pack data: {pack_response.text}")
-                return {"message": "Failed to retrieve pack data"}, 500
-
-            client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
-            # Prepare the user message with the conversation history and pack data
-            history_content = " ".join([f"{entry['sender']}: {entry['message']}" for entry in conversation_history])
-            pack_content = " ".join([f"{entry['data_type']}: {entry['content']}" for entry in pack_data.get('contents', [])])
-            full_user_message = f"Prompt: {user_message} History: {history_content} Pack ID: {pack_id} Pack Content: {pack_content}"
-
-            messages = [
-                {"role": "system", "content": "You are to answer all Queries using the provided context"},
-                {"role": "user", "content": full_user_message}
-            ]
-
-            logger.info(f"Sending messages to OpenAI: {messages}")
-
-            chat_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=messages
-            )
-
-            assistant_message = chat_completion.choices[0].message.content
-            logger.info(f"Assistant message: {assistant_message}")
-            return {"message": assistant_message}
-        except Exception as e:
-            logger.exception("An error occurred while generating GPT pack response")
-            return {'message': 'An error occurred while generating GPT pack response'}, 500
 
 
 
